@@ -72,20 +72,38 @@ def plot2dArray(a,wx=6,wy=6,save=None,show=1):
     if show : 
         plt.show()
 
-def plotLogGraph(x,y,datalabel,xlabel,ylabel,title,save=None,show=1):
+def plotGraph(x,array_y,datalabel="",xlabel="",ylabel="",xlimit=None,ylimit=None,title="",fontsize=10,log=False,save=None,grid=True,dpi=600,show=1):
+    #array_y can be y data or an array of y datas to plot together
     #datalabel=name of data
     #xlabel & ylabel = name of x and Y data
     #save : path to save
     #show = true to display it
+    plt.rcParams.update({'font.size': fontsize})
     fig,ax=plt.subplots()
-    ax.semilogy(x, y,label=datalabel)
+    array_y=np.asarray(array_y)#cast as np array
+    if len(array_y.shape)>1:
+        for i,y in enumerate(array_y):
+            if log:
+                ax.semilogy(x, y,label=datalabel[i])
+            else:
+                ax.plot(x, y,label=datalabel[i])
+    else :
+        if log:
+            ax.semilogy(x, array_y,label=datalabel)
+        else:
+            ax.plot(x, array_y,label=datalabel)
+    if xlimit is not None : 
+        plt.xlim(xlimit)
+    if ylimit is not None :
+        plt.ylim(ylimit)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     ax.legend()
-    plt.grid(True)
+    plt.grid(grid)
+    plt.tight_layout()
     if save is not None :
-        plt.savefig(save)
+        plt.savefig(save,dpi=dpi)
     if show : 
         plt.show()
 
@@ -209,10 +227,13 @@ def getDirBySubstr(path, substr, rec=True,nat=True,caseSensitive=False):
 #    print(list_file)
     return list_dir
 
-def pathBranch(path):
+def pathBranch(path,n=1):
     #return root of file name
     #ex : pathBranch("media/ostocker/ilove.you") return "media/ostocker"
-    return os.path.abspath(os.path.join(path, os.pardir))
+    #n : number of back setps : pathBranch("media/ostocker/ilove.you",2) return "media"
+    for i in range(n):
+        path=os.path.abspath(os.path.join(path, os.pardir))
+    return path
 
 def pathRelative(path,n):
     #return rrelative path give certain depth n
@@ -431,6 +452,11 @@ def normalize(a,force=False,mini=0,maxi=0):
         maxi=a.max()
         mini=a.min()
     return (a-mini)/(maxi-mini)
+
+def movingAverage(x, window_size):
+    #For smoothing curve, it does loop around, so return a vector of the same size
+    window= np.ones(int(window_size))/float(window_size)
+    return np.convolve(x, window, 'same')
 
 """ STRING"""
 def find_nth(string, substring, n):
@@ -682,7 +708,6 @@ def write_ply(filename, field_list, field_names, triangular_faces=None):
         if field.ndim > 2:
             print('fields have more than 2 dimensions')
             return False    
-    print("aaaaaa", field_list)
     # check all fields have the same number of data
     n_points = [field.shape[0] for field in field_list]
     if not np.all(np.equal(n_points, n_points[0])):
