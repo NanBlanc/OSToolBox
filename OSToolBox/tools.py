@@ -740,7 +740,7 @@ def write_ply(filename, field_list, field_names, comments=None, triangular_faces
         
         if comments is not None:
             for comment in comments :
-                header.append("comment" + comment)
+                header.append("comment " + comment)
 
         # Points properties description
         header.extend(header_properties(field_list, field_names))
@@ -815,3 +815,73 @@ def save_amap_vox(fname, vox_list, max_corner_center, min_corner_center, resolut
         
         #save
         np.savetxt(outfile, arr, delimiter=" ", fmt="%i %i %i %f %i %i %i %i %i %i %i %i %i %f %i %i")
+        
+        
+        
+""" METRICS SCORE """
+from sklearn.metrics import confusion_matrix
+
+class ConfusionMatrix:
+    #class to manage confusion matrix and compute associated metrics
+    def __init__(self, n_class, class_names,noDataValue):
+        self.CM=np.zeros((n_class,n_class))
+        self.n_class=n_class
+        self.class_names=class_names
+        self.noDataValue=noDataValue
+        
+    def clear(self):
+        self.CM=np.zeros((self.n_class,self.n_class))
+    
+    def add_batch(self, gt, pred):
+        labeled= gt!=self.noDataValue
+        if labeled.any():
+            self.CM+=confusion_matrix(gt[labeled], pred[labeled], labels = list(range(0,self.n_class)))
+    
+    def add_matrix(self,matrix):
+        self.CM+=matrix
+        
+    def overall_accuracy(self):
+        return 100*self.CM.trace()/self.CM.sum()
+    
+    def class_IoU(self, show=1):
+        #RETURN : miou & list of ious
+        #show = True for printing IoU
+        ious = np.full(self.n_class, 0.)
+        for i_class in range(self.n_class):
+            diviseur=(self.CM[i_class,:].sum()+self.CM[:,i_class].sum()-self.CM[i_class,i_class])
+            if diviseur ==0:
+#                print("WAS ZERO")
+                ious[i_class]=np.nan
+            else:
+#                print("WAS NOT ZERO")
+                ious[i_class] = self.CM[i_class,i_class] /diviseur
+        if show:
+            print('  |  '.join('{} : {:3.2f}%'.format(name, 100*iou) for name, iou in zip(self.class_names,ious)))
+        return 100*np.nansum(ious) / (np.logical_not(np.isnan(ious))).sum(), ious
+    
+    def printPerf(self,outDir):
+        #calculate and output score
+        np.savetxt(outDir+"/precision.txt",self.class_precision(),fmt="%.4f")
+        np.savetxt(outDir+"/recall.txt",self.class_recall(),fmt="%.4f")
+        np.savetxt(outDir+"/f1_score.txt",self.class_f1_score(),fmt="%.4f")
+        np.savetxt(outDir+"/oa.txt",[self.overall_accuracy()],fmt="%.4f")
+        #calculate & output IoU and mIoU
+        mious=self.class_IoU()
+        np.savetxt(outDir+"/miou.txt",[mious[0]],fmt="%.4f")
+        np.savetxt(outDir+"/iou.txt",mious[1]*100,fmt="%.4f")
+        #output CM
+        np.savetxt(outDir+"/cm.txt",self.CM,fmt="%d")
+        
+    def class_precision(self):
+        self.precision=[row[i]/sum(row)*100 for i,row in enumerate(self.CM)]
+        return self.precision
+    
+    def class_recall(self):
+        self.recall=[row[i]/sum(row)*100 for i,row in enumerate(self.CM.T)]
+        return self.recall
+    
+    def class_f1_score(self):
+        self.class_precision()
+        self.class_recall()
+        self.f1_score=[2*p*r/(p+r) for (p,r) in zip(self.precision,self.recall)]
+        return self.f1_score
