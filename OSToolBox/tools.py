@@ -19,6 +19,7 @@ import time
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 import sys
+import warnings
 
 
 """CLASSIFICATION"""
@@ -171,7 +172,7 @@ def getFileByExt(path, ext, rec=True,nat=True, caseSensitive=False):
                     break
 #    print(list_file)
     if nat:
-        list_file.sort(key=natural_keys)
+        list_file.sort(key=_naturalKeys)
     else :
         list_file.sort()
 #    print(list_file)
@@ -196,7 +197,7 @@ def getFileBySubstr(path, substr, rec=True,nat=True,caseSensitive=False):
                     break
 #    print(list_file)
     if nat:
-        list_file.sort(key=natural_keys)
+        list_file.sort(key=_naturalKeys)
     else :
         list_file.sort()
 #    print(list_file)
@@ -221,7 +222,7 @@ def getDirBySubstr(path, substr, rec=True,nat=True,caseSensitive=False):
                     break
 #    print(list_file)
     if nat:
-        list_dir.sort(key=natural_keys)
+        list_dir.sort(key=_naturalKeys)
     else :
         list_dir.sort()
 #    print(list_file)
@@ -323,19 +324,19 @@ def sortFoldersByDepth(a,p):
 
 """LIST"""
 #natural sorting algorithm
-def atoi(text):
+def _atoi(text):
     return int(text) if text.isdigit() else text
 
-def natural_keys(text):
+def _naturalKeys(text):
     '''
     USE :
-    alist.sort(key=natural_keys) sorts in human order
+    alist.sort(key=_naturalKeys) sorts in human order
     http://nedbatchelder.com/blog/200712/human_sorting.html
     (See Toothy's implementation in the comments)
     '''
-    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+    return [ _atoi(c) for c in re.split(r'(\d+)', text) ]
 
-def natural_sort_indices(temp):
+def naturalSortIndices(temp):
     return [temp.index(i) for i in sorted(temp, key=lambda x: re.search(r"(\d+)\.py", x).group(1))]
 
 
@@ -502,6 +503,7 @@ ply_dtypes = dict([
     (b'int', 'i4'),
     (b'uint32', 'u4'),
     (b'uint', 'u4'),
+    (b'int64', 'i8'),
     (b'float32', 'f4'),
     (b'float', 'f4'),
     (b'float64', 'f8'),
@@ -512,7 +514,7 @@ ply_dtypes = dict([
 valid_formats = {'ascii': '', 'binary_big_endian': '>', 'binary_little_endian': '<'}
 
 
-def parse_header(plyfile, ext):
+def _parseHeader(plyfile, ext):
     # Variables
     line = []
     properties = []
@@ -522,17 +524,24 @@ def parse_header(plyfile, ext):
         line = plyfile.readline()
 
         if b'element' in line:
+            if b'face' in line:
+                raise ValueError('Trying to read a mesh : use arg triangular_mesh=True')
+                
             line = line.split()
             num_points = int(line[2])
 
         elif b'property' in line:
             line = line.split()
+            if line[1] not in ply_dtypes.keys():
+                raise ValueError('Unsupported faces property : ' + ' '.join(str(l) for l in line) +'\n !!!!!!!!!! /!\\ Please Contact Olivier /!\\')
             properties.append((line[2].decode(), ext + ply_dtypes[line[1]]))
+        
+
 
     return num_points, properties
 
 
-def parse_mesh_header(plyfile, ext):
+def _parseMeshHeader(plyfile, ext):
     # Variables
     line = []
     vertex_properties = []
@@ -558,15 +567,18 @@ def parse_mesh_header(plyfile, ext):
         elif b'property' in line:
             if current_element == 'vertex':
                 line = line.split()
+                if line[1] not in ply_dtypes.keys():
+                    raise ValueError('Unsupported point property format : ' + str(line[1]) +'\n !!!!!!!!!! /!\\ Please Contact Olivier /!\\')
                 vertex_properties.append((line[2].decode(), ext + ply_dtypes[line[1]]))
-            elif current_element == 'vertex':
-                if not line.startswith('property list uchar int'):
-                    raise ValueError('Unsupported faces property : ' + line)
+            elif current_element == 'face':
+                line = line.split()
+                if not(line[2]==b'uchar' or line[2]==b'uint8') or not(line[3]==b'int' or line[3]==b'int32'):
+                    raise ValueError('Unsupported face properties : ' + ' '.join(l.decode('utf-8') for l in line) +'\n !!!!!!!!!! /!\\ Please Contact Olivier /!\\')
 
     return num_points, num_faces, vertex_properties
 
 
-def read_ply(filename, triangular_mesh=False):
+def readPly(filename, triangular_mesh=False):
     """
     Read ".ply" files
 
@@ -577,29 +589,33 @@ def read_ply(filename, triangular_mesh=False):
 
     Returns
     -------
-    result : array
-        data stored in the file
+    result : np.array or (np.array, np.array)
+        vertex stored in the file or if triangular_mesh=True, vertex and faces
+    
 
     Examples
     --------
-    Store data in file
-
-    >>> points = np.random.rand(5, 3)
-    >>> values = np.random.randint(2, size=10)
-    >>> write_ply('example.ply', [points, values], ['x', 'y', 'z', 'values'])
-
-    Read the file
-
-    >>> data = read_ply('example.ply')
-    >>> values = data['values']
-    array([0, 0, 1, 1, 0])
+    For Point Clouds as "X Y Z Attribute" :
+    >>> points = read_ply('point_cloud.ply')
+    >>> points
+    array([[ 0.466,  0.595,  0.324, 5],
+           [ 0.538,  0.407,  0.654, 2],
+           [ 0.850,  0.018,  0.988, 9],
+           [ 0.395,  0.394,  0.363, 7],
+           [ 0.873,  0.996,  0.092, 1]])
     
-    >>> points = np.vstack((data['x'], data['y'], data['z'])).T
-    array([[ 0.466  0.595  0.324]
-           [ 0.538  0.407  0.654]
-           [ 0.850  0.018  0.988]
-           [ 0.395  0.394  0.363]
-           [ 0.873  0.996  0.092]])
+    For Meshes as "X Y Z Attribute" and faces :
+    >>> points,faces = read_ply('mesh.ply',triangular_mesh=True)
+    >>> points
+    array([[ 0.466,  0.595,  0.324, 5],
+           [ 0.538,  0.407,  0.654, 2],
+           [ 0.850,  0.018,  0.988, 9],
+           [ 0.395,  0.394,  0.363, 7],
+           [ 0.873,  0.996,  0.092, 1]],dtype=float32)
+    >>> faces
+    array([[0, 1, 2],
+           [0, 2, 3],
+           [3, 4, 0]], dtype=int32)
 
     """
 
@@ -608,12 +624,10 @@ def read_ply(filename, triangular_mesh=False):
 
         # Check if the file start with ply
         if b'ply' not in plyfile.readline():
-            raise ValueError('The file does not start whith the word ply')
+            raise ValueError('Is it .PLY Format ?\nThe file does not start whith the word "ply"')
 
         # get binary_little/big or ascii
         fmt = plyfile.readline().split()[1].decode()
-        if fmt == "ascii":
-            raise ValueError('The file is not binary')
 
         # get extension for building the numpy dtypes
         ext = valid_formats[fmt]
@@ -622,34 +636,56 @@ def read_ply(filename, triangular_mesh=False):
         if triangular_mesh:
 
             # Parse header
-            num_points, num_faces, properties = parse_mesh_header(plyfile, ext)
+            num_points, num_faces, properties = _parseMeshHeader(plyfile, ext)
+            
+            vertex = 0
+            faces = 0
+            if fmt == "ascii":
+                #split the long list outputed by fromfile at the right position between vertex and faces
+                data = np.split(np.fromfile(plyfile,sep=" "),[num_points*len(properties)])
+                #reshape the data
+                vertex=data[0].reshape((num_points,len(properties)))
+                try :
+                    full_faces=data[1].reshape((num_faces,4))
+                except:
+                    raise ValueError('This file is not a triangular mesh (only 3 vertex per face)')
+                faces=full_faces[:,1:]
 
-            # Get point data
-            vertex_data = np.fromfile(plyfile, dtype=properties, count=num_points)
-
-            # Get face data
-            face_properties = [('k', ext + 'u1'),
-                               ('v1', ext + 'i4'),
-                               ('v2', ext + 'i4'),
-                               ('v3', ext + 'i4')]
-            faces_data = np.fromfile(plyfile, dtype=face_properties, count=num_faces)
-
-            # Return vertex data and concatenated faces
-            faces = np.vstack((faces_data['v1'], faces_data['v2'], faces_data['v3'])).T
-            data = [vertex_data, faces]
+            else :
+                # Get point data
+                vertex_data = np.fromfile(plyfile, dtype=properties, count=num_points)
+                vertex_data=vertex_data.astype([('', '<f8')]*len(properties))
+                vertex=vertex_data.view('<f8').reshape(vertex_data.shape + (-1,))
+    
+                # Get face data
+                face_properties = [('k', ext + 'u1'),
+                                   ('v1', ext + 'i4'),
+                                   ('v2', ext + 'i4'),
+                                   ('v3', ext + 'i4')]
+                faces_data = np.fromfile(plyfile, dtype=face_properties, count=num_faces)
+                
+                # Return vertex data and concatenated faces
+                faces = np.vstack((faces_data['v1'], faces_data['v2'], faces_data['v3'])).T
+            
+            return vertex, faces
 
         else:
-
             # Parse header
-            num_points, properties = parse_header(plyfile, ext)
+            num_points, properties = _parseHeader(plyfile, ext)                
 
             # Get data
-            data = np.fromfile(plyfile, dtype=properties, count=num_points)
+            data=0
+            if fmt == "ascii":
+                data = np.fromfile(plyfile,sep=" ").reshape((num_points,len(properties)))                
+            else :
+                data = np.fromfile(plyfile, dtype=properties, count=num_points)
+                #convert to np.ndarray, unstructured, in float64
+                data=data.astype([('', '<f8')]*len(properties))
+                data=data.view('<f8').reshape(data.shape + (-1,))
+            return data
 
-    return data
 
-
-def header_properties(field_list, field_names):
+def _headerProperties(field_list, field_names):
 
     # List of lines to write
     lines = []
@@ -667,7 +703,7 @@ def header_properties(field_list, field_names):
     return lines
 
 
-def write_ply(filename, field_list, field_names, comments=None, triangular_faces=None):
+def writePly(filename, field_list, field_names, storage="binary", comments=None, triangular_faces=None):
     """
     Write ".ply" files
 
@@ -688,6 +724,9 @@ def write_ply(filename, field_list, field_names, comments=None, triangular_faces
     
     comments : list
         every comment you want to add, each list entry is an other line
+    
+    triangular_faces : list, numpy array (2 dimension : faces, indexes)
+        list of list of 3 vertex indexes that share a common face. 
 
     Examples
     --------
@@ -704,8 +743,14 @@ def write_ply(filename, field_list, field_names, comments=None, triangular_faces
 
     """
 
-    # Format list input to the right form
+    # Format list input to the right form (be a list if alone or tuple)
     field_list = list(field_list) if (type(field_list) == list or type(field_list) == tuple) else list((field_list,))
+    
+    #convert to np.array if not
+    for i, field in enumerate(field_list):
+        if not isinstance(field,np.ndarray):
+            field_list[i]=np.array(field)
+    
     for i, field in enumerate(field_list):
         if field.ndim < 2:
             field_list[i] = field.reshape(-1, 1)
@@ -724,6 +769,15 @@ def write_ply(filename, field_list, field_names, comments=None, triangular_faces
         print(n_fields,field_names)
         print('wrong number of field names')
         return False
+    
+    #Check if no int 64
+    n=0
+    for i, field in enumerate(field_list):
+        if field_list[i].dtype.name == "int64":
+            field_list[i]=field_list[i].astype("int32")
+            warnings.warn("OST WARNING : recasted field {} from int64 to int32, cause int64 is not accepted for plyfile. To remove this warning, recast yourself (to float or int32)".format(field_names[n]))
+        n+=field_list[i].shape[1]
+    
 
     # Add extension if not there
     if not filename.endswith('.ply'):
@@ -736,17 +790,23 @@ def write_ply(filename, field_list, field_names, comments=None, triangular_faces
         header = ['ply']
 
         # Encoding format
-        header.append('format binary_' + sys.byteorder + '_endian 1.0')
+        if storage=="binary":
+            header.append('format binary_' + sys.byteorder + '_endian 1.0')
+        elif storage=="ascii":
+            header.append('format ascii 1.0')
+        else:
+            raise ValueError('Unsupported file format : ' + str(storage) + ', select "binary" or "ascii"')
         
         if comments is not None:
             for comment in comments :
                 header.append("comment " + comment)
 
         # Points properties description
-        header.extend(header_properties(field_list, field_names))
+        header.extend(_headerProperties(field_list, field_names))
 
         # Add faces if needded
         if triangular_faces is not None:
+            triangular_faces = np.array(triangular_faces)
             header.append('element face {:d}'.format(triangular_faces.shape[0]))
             header.append('property list uchar int vertex_indices')
 
@@ -756,37 +816,69 @@ def write_ply(filename, field_list, field_names, comments=None, triangular_faces
         # Write all header lines
         for line in header:
             plyfile.write("%s\n" % line)
+    
+    
+    #Writting
+    if storage=="ascii":
+        # open in binary/append to use tofile
+        with open(filename, 'a') as plyfile:
+            data= np.hstack(field_list)
+            savetxtCompact(plyfile, data,' ')
 
-    # open in binary/append to use tofile
-    with open(filename, 'ab') as plyfile:
+            if triangular_faces is not None:
+                k=np.full((triangular_faces.shape[0],1), 3)
+                data=np.hstack([k,triangular_faces],)
+                np.savetxt(plyfile, data, '%i',' ')
+                
+    elif storage=="binary":
+        with open(filename, 'ab') as plyfile:
+            i = 0
+            type_list = []
+            for fields in field_list:
+                for field in fields.T:
+                    type_list += [(field_names[i], field.dtype.str)]
+                    i += 1
+            data = np.empty(field_list[0].shape[0], dtype=type_list)
+            i = 0
+            for fields in field_list:
+                for field in fields.T:
+                    data[field_names[i]] = field
+                    i += 1
 
-        # Create a structured array
-        i = 0
-        type_list = []
-        for fields in field_list:
-            for field in fields.T:
-                type_list += [(field_names[i], field.dtype.str)]
-                i += 1
-        data = np.empty(field_list[0].shape[0], dtype=type_list)
-        i = 0
-        for fields in field_list:
-            for field in fields.T:
-                data[field_names[i]] = field
-                i += 1
-
-        data.tofile(plyfile)
-
-        if triangular_faces is not None:
-            triangular_faces = triangular_faces.astype(np.int32)
-            type_list = [('k', 'uint8')] + [(str(ind), 'int32') for ind in range(3)]
-            data = np.empty(triangular_faces.shape[0], dtype=type_list)
-            data['k'] = np.full((triangular_faces.shape[0],), 3, dtype=np.uint8)
-            data['0'] = triangular_faces[:, 0]
-            data['1'] = triangular_faces[:, 1]
-            data['2'] = triangular_faces[:, 2]
             data.tofile(plyfile)
 
+            if triangular_faces is not None:
+                triangular_faces = triangular_faces.astype(np.int32)
+                type_list = [('k', 'uint8')] + [(str(ind), 'int32') for ind in range(3)]
+                data = np.empty(triangular_faces.shape[0], dtype=type_list)
+                data['k'] = np.full((triangular_faces.shape[0],), 3, dtype=np.uint8)
+                data['0'] = triangular_faces[:, 0]
+                data['1'] = triangular_faces[:, 1]
+                data['2'] = triangular_faces[:, 2]
+                data.tofile(plyfile)
     return True
+
+""" TEXT FUNCTIONS """
+
+def savetxtCompact(fname, x, delimiter=','):
+    #from https://stackoverflow.com/questions/24691755/how-to-format-in-numpy-savetxt-such-that-zeros-are-saved-only-as-0
+    #Check if fname is path or file handle
+    opened=False
+    if not(hasattr(fname, 'read') and hasattr(fname, 'write')):
+        fh=open(fname, 'w')
+        opened=True
+    else :
+        fh=fname
+    #writting loop
+    for row in x:
+        line = delimiter.join(str(np.float64(value)).rstrip('0').rstrip('.') if not "e+" in str(np.float64(value)) else str(np.float64(value)) for value in row)
+        if "e+" in line :
+            warnings.warn('OST WARNING : Values too big for memory precision, forced to use scientific notation')
+        fh.write(line + '\n')
+    #close file handle if opened here
+    if opened:
+        fh.close()
+        
 
 """ AMAPVOXEL FUNCTIONS """
 #function edited from hannah weiser opaque voxel article
@@ -885,3 +977,15 @@ class ConfusionMatrix:
         self.class_recall()
         self.f1_score=[2*p*r/(p+r) for (p,r) in zip(self.precision,self.recall)]
         return self.f1_score
+
+
+###################################################
+###################################################
+""" OLD NAMING CONVENTION """
+
+def write_ply(filename, field_list, field_names, storage="binary", comments=None, triangular_faces=None):
+    # print("DEPRECATED in 1.7, please use writePly() function")
+    return writePly(filename, field_list, field_names, storage, comments, triangular_faces)
+def read_ply(filename, triangular_mesh=False):
+    # print("DEPRECATED in 1.7, please use readPly() function")
+    return readPly(filename, triangular_mesh)
