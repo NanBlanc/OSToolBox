@@ -13,7 +13,7 @@ Project:
 from setuptools import setup
 
 setup(name='OSToolBox',
-      version='1.6.3',
+      version='1.7',
       description='implement many basic function and tools for GIS coding with python',
       url='https://github.com/NanBlanc/OSToolBox',
       author='Olivier Stocker',
