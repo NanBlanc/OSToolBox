@@ -797,8 +797,11 @@ def writePly(filename, field_list, field_names, storage="binary", comments=None,
             raise ValueError('Unsupported file format : ' + str(storage) + ', select "binary" or "ascii"')
         
         if comments is not None:
-            for comment in comments :
-                header.append("comment " + comment)
+            if isinstance(comments, str) :
+                header.append("comment " + comments)
+            else :
+                for c in comments :
+                    header.append("comment " + c)
 
         # Points properties description
         header.extend(_headerProperties(field_list, field_names))
