@@ -264,8 +264,7 @@ def pathExt(path):
 
 def createDir(path):
     #create folder at path (with name) location skip and if already existing
-    if not os.path.exists(path):
-        os.makedirs(path)
+    os.makedirs(path, exist_ok=True)
     return path
 
 def checkNIncrementLeaf(path):
