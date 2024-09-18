@@ -110,14 +110,14 @@ def plotGraph(x,array_y,datalabel="",xlabel="",ylabel="",xlimit=None,ylimit=None
 
 
 """TIMER"""
-def chrono(tps=-1):
+def chrono(temps=-1):
     #tps = reference time
     #USAGE :
         #t1=chrono()
         #do what you want
         #chrono(t1)
-    if tps!=-1:
-        print(time.perf_counter()-tps)
+    if temps!=-1:
+        print(time.perf_counter()-temps)
     return time.perf_counter()
 
 """PARSER"""
@@ -716,10 +716,15 @@ def writePly(filename, field_list, field_names, storage="binary", comments=None,
         the fields to be saved in the ply file. Either a numpy array, a list of numpy arrays or a 
         tuple of numpy arrays. Each 1D numpy array and each column of 2D numpy arrays are considered 
         as one field. 
+        Example : two points x=1,y=2,z=3 and x=1,y=2,z=4
+            YES : field_list=np.array([[1,2,3],[1,2,4]])
+            NO : field_list=[[1,2,3],[1,2,4]]
+            YES : field_list=[[1,1],[2,2],[3,4]]
+            NO : field_list=np.array([[1,1],[2,2],[3,4]])
 
     field_names : list
         the name of each fields as a list of strings. Has to be the same length as the number of 
-        fields.
+        fields.`
     
     comments : list
         every comment you want to add, each list entry is an other line
@@ -795,7 +800,7 @@ def writePly(filename, field_list, field_names, storage="binary", comments=None,
             header.append('format ascii 1.0')
         else:
             raise ValueError('Unsupported file format : ' + str(storage) + ', select "binary" or "ascii"')
-        
+            
         if comments is not None:
             if isinstance(comments, str) :
                 header.append("comment " + comments)
