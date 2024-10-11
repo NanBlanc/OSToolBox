@@ -484,8 +484,86 @@ def stringlist_to_list(culotte,sep=" "):
 def intInString(string):
     #get_int_in_string("/home/parcelles1/sub_21/paclot_887","_") => [1,21,887]
     return np.array([int(s) for s in re.findall('[0-9]+', string)])
-    
 
+""" POINT CLOUD TRANSFORM FUNCTIONS """
+def rotationZ(points, angle, degree=False):
+    """XYZ should be 3 first column"""
+    angle=angle*np.pi/180 if degree else angle
+    rot_mat = np.array([[np.cos(angle),-np.sin(angle), 0],
+                        [np.sin(angle), np.cos(angle), 0], 
+                        [0, 0, 1]])
+    points[:, :3] = np.dot(points[:, :3], rot_mat)
+    return points
+
+def rotationXYZ(points, angles, degree=False, inverse=False):
+    angles=angles*np.pi/180 if degree else angles
+    Rx = np.array([[1,0,0],
+                   [0,np.cos(angles[0]),-np.sin(angles[0])],
+                   [0,np.sin(angles[0]),np.cos(angles[0])]])
+    Ry = np.array([[np.cos(angles[1]),0,np.sin(angles[1])],
+                   [0,1,0],
+                   [-np.sin(angles[1]),0,np.cos(angles[1])]])
+    Rz = np.array([[np.cos(angles[2]),-np.sin(angles[2]),0],
+                   [np.sin(angles[2]),np.cos(angles[2]),0],
+                   [0,0,1]])
+    R = np.dot(Rx, np.dot(Ry,Rz)) if inverse else np.dot(Rz, np.dot(Ry,Rx)) 
+    points[:, :3] = np.dot(points[:, :3], R)
+    return points
+
+def feature_jittering(values,maximum):
+    sigma=maximum/100
+    clip=sigma*4
+    values += np.clip(sigma * np.random.randn(values.shape[0],values.shape[1]), -1*clip, clip)
+    return values/maximum
+
+def cuboidDrop(points,cuboid_size):
+    drop_center = points[np.random.choice(points.shape[0]), :3].copy()#ATTENTION DROP CENTER NEEDS TO BE COPIED OTHERWISE LOST DURING TRANSLATION
+    #define drop_center as coordinate center
+    points[:,:3]-=drop_center
+    
+    #do random rotation
+    angles = np.random.randn(3)*2*np.pi 
+    points[:,:3]=rotationXYZ(points[:,:3],angles)
+    
+    max_xyz = cuboid_size/2
+    min_xyz = -cuboid_size/2
+    
+    upper_idx = np.sum((points[:,:3] < max_xyz).astype(np.int32), 1) == 3
+    lower_idx = np.sum((points[:,:3] > min_xyz).astype(np.int32), 1) == 3
+
+    new_pointidx = ~((upper_idx) & (lower_idx))
+    points=points[new_pointidx,...]
+    
+    #inverse rotation and translation
+    points[:,:3]=rotationXYZ(points[:,:3],-angles,inverse=True)
+    points[:,:3]+=drop_center
+    return points
+    
+def randomCuboidDrop(points, min_dropped, max_dropped, size,sigma):
+    sizes=np.random.randn(int(np.random.uniform(min_dropped,max_dropped)))*sigma+size
+    sizes=np.clip(sizes,-4*sigma+size,4*sigma+size)
+    for s in sizes:
+        points=cuboidDrop(points,s)
+    return points
+
+def randomFlip(points,flip_x=True,flip_y=True,flip_z=False):
+    if np.random.random() > 0.5 and flip_x:
+        print("flipped X")
+        points[:,0,...] = -1 * points[:,0,...]
+    if np.random.random() > 0.5 and flip_y:
+        print("flipped Y")
+        points[:,1,...] = -1 * points[:,1,...]
+    if np.random.random() > 0.5 and flip_z:
+        print("flipped Z")
+        points[:,2,...] = -1 * points[:,2,...]
+    return points
+
+def randomDrop(points, max_dropped_ratio=0.875):
+    dropout_ratio =  np.random.random()*max_dropped_ratio # 0~0.875
+    drop_idx = np.where(np.random.random((points.shape[0]))<=dropout_ratio)[0]
+    if len(drop_idx)>0:
+        points[drop_idx,:] = points[0,:] # set to the first point
+    return points
 
 """ PLY FORMAT POINT CLOUDS"""
 # Define PLY types
