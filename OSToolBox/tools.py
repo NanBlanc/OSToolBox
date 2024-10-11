@@ -257,6 +257,17 @@ def pathLeaf(path):
     #ex : pathBranch("media/ostocker/ilove.you") return "ilove"
     return os.path.splitext(pathLeafExt(path))[0]
 
+def pathBranchLeaf(path):
+    #return file name
+    #ex : pathBranch("media/ostocker/ilove.you") return "media/ostocker/ilove"
+    return pathBranch(path)+"/"+pathLeaf(path)
+
+def pathLeafStringAppend(path,s):
+    #return file name
+    #append a string before extension
+    #ex : pathBranch("media/ostocker/ilove.you","_me") return "media/ostocker/ilove_me.you"
+    return pathBranch(path)+"/"+pathLeaf(path)+s+pathExt(path)
+
 def pathExt(path):
     #return file ext
     #ex : pathBranch("media/ostocker/ilove.you") return ".tif"
