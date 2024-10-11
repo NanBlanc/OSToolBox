@@ -655,7 +655,7 @@ def _parseMeshHeader(plyfile, ext):
     return num_points, num_faces, vertex_properties
 
 
-def readPly(filename, triangular_mesh=False):
+def readPly(filename, fields_names=False, triangular_mesh=False):
     """
     Read ".ply" files
 
@@ -666,34 +666,12 @@ def readPly(filename, triangular_mesh=False):
 
     Returns
     -------
-    result : np.array or (np.array, np.array)
-        vertex stored in the file or if triangular_mesh=True, vertex and faces
-    
-
-    Examples
-    --------
-    For Point Clouds as "X Y Z Attribute" :
-    >>> points = read_ply('point_cloud.ply')
-    >>> points
-    array([[ 0.466,  0.595,  0.324, 5],
-           [ 0.538,  0.407,  0.654, 2],
-           [ 0.850,  0.018,  0.988, 9],
-           [ 0.395,  0.394,  0.363, 7],
-           [ 0.873,  0.996,  0.092, 1]])
-    
-    For Meshes as "X Y Z Attribute" and faces :
-    >>> points,faces = read_ply('mesh.ply',triangular_mesh=True)
-    >>> points
-    array([[ 0.466,  0.595,  0.324, 5],
-           [ 0.538,  0.407,  0.654, 2],
-           [ 0.850,  0.018,  0.988, 9],
-           [ 0.395,  0.394,  0.363, 7],
-           [ 0.873,  0.996,  0.092, 1]],dtype=float32)
-    >>> faces
-    array([[0, 1, 2],
-           [0, 2, 3],
-           [3, 4, 0]], dtype=int32)
-
+    result 
+    np.array of points + features
+    +
+    [if triangular_mesh=True] np.array of faces
+    +
+    [if return_fields_names=True]: np.array of features fields names
     """
 
     with open(filename, 'rb') as plyfile:
@@ -743,13 +721,14 @@ def readPly(filename, triangular_mesh=False):
                 
                 # Return vertex data and concatenated faces
                 faces = np.vstack((faces_data['v1'], faces_data['v2'], faces_data['v3'])).T
-            
-            return vertex, faces
+            if fields_names:
+                return vertex, faces, np.array([p[0] for p in properties])
+            else :
+                return vertex, faces
 
         else:
             # Parse header
             num_points, properties = _parseHeader(plyfile, ext)                
-
             # Get data
             data=0
             if fmt == "ascii":
@@ -757,9 +736,12 @@ def readPly(filename, triangular_mesh=False):
             else :
                 data = np.fromfile(plyfile, dtype=properties, count=num_points)
                 #convert to np.ndarray, unstructured, in float64
-                data=data.astype([('', '<f8')]*len(properties))
+                data=data.astype([(properties[i][0], '<f8') for i in range(len(properties))])
                 data=data.view('<f8').reshape(data.shape + (-1,))
-            return data
+            if fields_names:
+                return data, np.array([p[0] for p in properties])
+            else :
+                return data
 
 
 def _headerProperties(field_list, field_names):
