@@ -1,4 +1,6 @@
-# OStoolBox
+# OStoolBox 
+version 1.8.1
+ 
 This package regroups usefuls functions for file managment, GIS and point cloud coding with python. 
 
 Source of improved functions : 
