@@ -659,13 +659,14 @@ def qcsfTransform(points,drop_ratio=0.1,min_cube_drop=2,max_cube_drop=6,cube_siz
     points=randomFlip(points)
     # rotation :
     theta = np.random.uniform(0, 2*np.pi)
-    ost.rotationZ(points, theta)
+    points=rotationZ(points, theta)
     # jittering : 
-    points=ost.jittering(points,sigma_jittering)
+    points=jittering(points,sigma_jittering)
     
     ##features
     #intensity augment
-    points=ost.featureAugmentation(points,3,max_int)
+    points=featureAugmentation(points,3,max_int)
+    return points
 
 """ PLY FORMAT POINT CLOUDS"""
 # Define PLY types
