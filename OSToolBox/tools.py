@@ -534,20 +534,23 @@ def rotationXYZ(points, angles, degree=False, inverse=False):
     points[:, :3] = np.dot(points[:, :3], R)
     return points
 
-def intensityAugmentation(values,maximum=None,sigma=None):
+def featureAugmentation(points,column,maximum=None,sigma=None):
     """
     apply gaussian noise then normalize a list a values given a maximum
     
     values : array of values (needs shape attribute)
+    column : index of column of which to transform is applied
     maximum(None) : max value used to normalise. If none take max of values
     sigma(None) : sigma of gaussian distrubution. If none take 1% of maximum
     """
+    values=points[:,column]
     #Value jittering and Normalisation given the maximum (default sigma = 1percent of max)
     maximum = maximum if maximum is not None else np.max(values)
     sigma=maximum/100 if sigma is None else sigma
     clip=sigma*4
     values += np.clip(sigma * np.random.randn(*values.shape), -1*clip, clip)
-    return values/maximum
+    points[:,column]=values/maximum
+    return points
 
 def cuboidDrop(points,cuboid_size):
     """
@@ -577,6 +580,20 @@ def cuboidDrop(points,cuboid_size):
     points[:,:3]=rotationXYZ(points[:,:3],-angles,inverse=True)
     points[:,:3]+=drop_center
     return points
+
+
+def jittering(points,sigma=0.05, clip=None):
+    """
+    move points on the 3 axis given a gaussian probability of sigma, clipped at clip
+    
+    points : 2d np array where XYZ should be 3 first column
+    sigma(0.05) : sigma of the distance normal distribution of XYZ movement
+    clip(None) : maximum/minimum value of distance from gaussian function. if None max/min = 4*sigma 
+    """
+    clip=4*sigma if clip is None else clip
+    points[:,:3] += np.clip(sigma * np.random.randn(points.shape[0],3), -1*clip, clip)    
+    return points
+    
     
 def randomCuboidDrop(points, min_dropped, max_dropped, size,sigma):
     """
