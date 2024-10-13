@@ -620,13 +620,13 @@ def randomFlip(points,flip_x=True,flip_y=True,flip_z=False):
     flip_z(False) : if True inverse z coordinate 50% of the time 
     """
     if np.random.random() > 0.5 and flip_x:
-        print("flipped X")
+        # print("flipped X")
         points[:,0,...] = -1 * points[:,0,...]
     if np.random.random() > 0.5 and flip_y:
-        print("flipped Y")
+        # print("flipped Y")
         points[:,1,...] = -1 * points[:,1,...]
     if np.random.random() > 0.5 and flip_z:
-        print("flipped Z")
+        # print("flipped Z")
         points[:,2,...] = -1 * points[:,2,...]
     return points
 
