@@ -665,7 +665,7 @@ def qcsfTransform(points,drop_ratio=0.1,min_cube_drop=2,max_cube_drop=6,cube_siz
     
     ##features
     #intensity augment
-    points=featureAugmentation(points,3,max_int)
+    points=featureAugmentation(points,3,max_intensity)
     return points
 
 """ PLY FORMAT POINT CLOUDS"""
