@@ -581,7 +581,6 @@ def cuboidDrop(points,cuboid_size):
     points[:,:3]+=drop_center
     return points
 
-
 def jittering(points,sigma=0.05, clip=None):
     """
     move points on the 3 axis given a gaussian probability of sigma, clipped at clip
@@ -643,6 +642,30 @@ def randomDrop(points, max_dropped_ratio=0.5):
     if len(drop_idx)>0:
         points[drop_idx,:] = points[0,:] # set to the first point
     return points
+
+def qcsfTransform(points,drop_ratio=0.1,min_cube_drop=2,max_cube_drop=6,cube_size=4,sigma_cube_size=1,sigma_jittering=0.05,max_int=1025):
+    ##point drop
+    #random point drop
+    points=randomDrop(points,drop_ratio)
+    #cuboid drop
+    points=randomCuboidDrop(points,min_cube_drop,max_cube_drop,cube_size,sigma_cube_size)
+    
+    ##position
+    # translation :
+    translation_xy=np.random.uniform(-20,0,2)
+    translation_xyz=np.append(translation_xy,np.random.uniform(-10,10))
+    points[:,:3]+=translation_xyz
+    #scene flip
+    points=randomFlip(points)
+    # rotation :
+    theta = np.random.uniform(0, 2*np.pi)
+    ost.rotationZ(points, theta)
+    # jittering : 
+    points=ost.jittering(points,sigma_jittering)
+    
+    ##features
+    #intensity augment
+    points=ost.featureAugmentation(points,3,max_int)
 
 """ PLY FORMAT POINT CLOUDS"""
 # Define PLY types
