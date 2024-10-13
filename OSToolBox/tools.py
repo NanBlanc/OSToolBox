@@ -643,7 +643,7 @@ def randomDrop(points, max_dropped_ratio=0.5):
         points[drop_idx,:] = points[0,:] # set to the first point
     return points
 
-def qcsfTransform(points,drop_ratio=0.1,min_cube_drop=2,max_cube_drop=6,cube_size=4,sigma_cube_size=1,sigma_jittering=0.05,max_int=1025):
+def qcsfTransform(points,drop_ratio=0.1,min_cube_drop=2,max_cube_drop=6,cube_size=4,sigma_cube_size=1,sigma_jittering=0.05,max_intensity=1025):
     ##point drop
     #random point drop
     points=randomDrop(points,drop_ratio)
