@@ -498,7 +498,13 @@ def intInString(string):
 
 """ POINT CLOUD TRANSFORM FUNCTIONS """
 def rotationZ(points, angle, degree=False):
-    """XYZ should be 3 first column"""
+    """
+    apply rotation of angle around Z axis 
+    
+    points : 2d np array where XYZ should be 3 first column
+    angle : angle of rotation in radian
+    degree(False) : True if you want to use angles in degree
+    """
     angle=angle*np.pi/180 if degree else angle
     rot_mat = np.array([[np.cos(angle),-np.sin(angle), 0],
                         [np.sin(angle), np.cos(angle), 0], 
@@ -507,6 +513,13 @@ def rotationZ(points, angle, degree=False):
     return points
 
 def rotationXYZ(points, angles, degree=False, inverse=False):
+    """
+    apply rotation of angle around X then Y then Z axis of angle in angles
+    
+    points : 2d np array where XYZ should be 3 first column
+    angles : list of angle of rotation in radian for X, Y and Z
+    inverse(False) : True if you want to apply the rotation order as Z then Y then X axis
+    """
     angles=angles*np.pi/180 if degree else angles
     Rx = np.array([[1,0,0],
                    [0,np.cos(angles[0]),-np.sin(angles[0])],
@@ -521,14 +534,28 @@ def rotationXYZ(points, angles, degree=False, inverse=False):
     points[:, :3] = np.dot(points[:, :3], R)
     return points
 
-def intensityAugmentation(values,maximum,sigma=None):
+def intensityAugmentation(values,maximum=None,sigma=None):
+    """
+    apply gaussian noise then normalize a list a values given a maximum
+    
+    values : array of values (needs shape attribute)
+    maximum(None) : max value used to normalise. If none take max of values
+    sigma(None) : sigma of gaussian distrubution. If none take 1% of maximum
+    """
     #Value jittering and Normalisation given the maximum (default sigma = 1percent of max)
+    maximum = maximum if maximum is not None else np.max(values)
     sigma=maximum/100 if sigma is None else sigma
     clip=sigma*4
-    values += np.clip(sigma * np.random.randn(values.shape[0],values.shape[1]), -1*clip, clip)
+    values += np.clip(sigma * np.random.randn(*values.shape), -1*clip, clip)
     return values/maximum
 
 def cuboidDrop(points,cuboid_size):
+    """
+    remove points located in a cube of dimension size^3 and random orientation centered on a random point of points
+    
+    points : 2d np array where XYZ should be 3 first column
+    cuboid_size : size of the cube : size*size*size
+    """
     drop_center = points[np.random.choice(points.shape[0]), :3].copy()#ATTENTION DROP CENTER NEEDS TO BE COPIED OTHERWISE LOST DURING TRANSLATION
     #define drop_center as coordinate center
     points[:,:3]-=drop_center
@@ -552,6 +579,15 @@ def cuboidDrop(points,cuboid_size):
     return points
     
 def randomCuboidDrop(points, min_dropped, max_dropped, size,sigma):
+    """
+    Repeat in a uniform distribution probabilty between min_dropped and max_dropped the removal of points located in a cube of dimension distrubtion gaussian of sigma=sigma(clipped at 4*sigma) and mu=size^3 and random orientation centered on a random point of points
+    
+    points : 2d np array where XYZ should be 3 first column
+    min_dropped : minimum number of cube dropped
+    min_dropped : maximum number of cube dropped
+    cuboid_size : center of the size normal distribution of cubes : size*size*size
+    sigma : sigma of the size normal distribution of cubes
+    """
     sizes=np.random.randn(int(np.random.uniform(min_dropped,max_dropped)))*sigma+size
     sizes=np.clip(sizes,-4*sigma+size,4*sigma+size)
     for s in sizes:
@@ -559,6 +595,14 @@ def randomCuboidDrop(points, min_dropped, max_dropped, size,sigma):
     return points
 
 def randomFlip(points,flip_x=True,flip_y=True,flip_z=False):
+    """
+    applies a flip (inversion the coordinates) with a 0.5 probability on choosen axis 
+    
+    points : 2d np array where XYZ should be 3 first column
+    flip_x(True) : if True inverse x coordinate 50% of the time 
+    flip_y(True) : if True inverse y coordinate 50% of the time 
+    flip_z(False) : if True inverse z coordinate 50% of the time 
+    """
     if np.random.random() > 0.5 and flip_x:
         print("flipped X")
         points[:,0,...] = -1 * points[:,0,...]
@@ -570,7 +614,13 @@ def randomFlip(points,flip_x=True,flip_y=True,flip_z=False):
         points[:,2,...] = -1 * points[:,2,...]
     return points
 
-def randomDrop(points, max_dropped_ratio=0.875):
+def randomDrop(points, max_dropped_ratio=0.5):
+    """
+    applies randomly drop a ratio of points in points where ratio is uniform value between 0 and max_dropped_ratio
+    
+    points : 2d np array where XYZ should be 3 first column
+    max_dropped_ratio(0.5) : maximum ratio selected of points to drop
+    """
     dropout_ratio =  np.random.random()*max_dropped_ratio # 0~0.875
     drop_idx = np.where(np.random.random((points.shape[0]))<=dropout_ratio)[0]
     if len(drop_idx)>0:
