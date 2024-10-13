@@ -521,8 +521,9 @@ def rotationXYZ(points, angles, degree=False, inverse=False):
     points[:, :3] = np.dot(points[:, :3], R)
     return points
 
-def feature_jittering(values,maximum):
-    sigma=maximum/100
+def intensityAugmentation(values,maximum,sigma=None):
+    #Value jittering and Normalisation given the maximum (default sigma = 1percent of max)
+    sigma=maximum/100 if sigma is None else sigma
     clip=sigma*4
     values += np.clip(sigma * np.random.randn(values.shape[0],values.shape[1]), -1*clip, clip)
     return values/maximum
