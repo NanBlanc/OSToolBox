@@ -825,7 +825,7 @@ def readPly(filename, fields_names=False, triangular_mesh=False):
                 # Return vertex data and concatenated faces
                 faces = np.vstack((faces_data['v1'], faces_data['v2'], faces_data['v3'])).T
             if fields_names:
-                return vertex, faces, np.array([p[0] for p in properties])
+                return vertex, faces, [p[0] for p in properties]
             else :
                 return vertex, faces
 
@@ -842,7 +842,7 @@ def readPly(filename, fields_names=False, triangular_mesh=False):
                 data=data.astype([(properties[i][0], '<f8') for i in range(len(properties))])
                 data=data.view('<f8').reshape(data.shape + (-1,))
             if fields_names:
-                return data, np.array([p[0] for p in properties])
+                return data, [p[0] for p in properties]
             else :
                 return data
 
@@ -927,7 +927,7 @@ def writePly(filename, field_list, field_names, storage="binary", comments=None,
     # check all fields have the same number of data
     n_points = [field.shape[0] for field in field_list]
     if not np.all(np.equal(n_points, n_points[0])):
-        print('wrong field dimensions')
+        print('wrong field dimensions :', [field.shape for field in field_list])
         return False    
 
     # Check if field_names and field_list have same nb of column
