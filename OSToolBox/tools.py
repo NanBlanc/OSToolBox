@@ -640,7 +640,8 @@ def randomDrop(points, max_dropped_ratio=0.5):
     dropout_ratio =  np.random.random()*max_dropped_ratio # 0~0.875
     drop_idx = np.where(np.random.random((points.shape[0]))<=dropout_ratio)[0]
     if len(drop_idx)>0:
-        points[drop_idx,:] = points[0,:] # set to the first point
+        # points[drop_idx,:] = points[0,:] # set to the first point (ORIGINAL VERSION WHERE THE REPLACE WITH FIRST INSTANCE, TO KEEP SAME NB OF POINTS)
+        points=np.delete(points,drop_idx,0)
     return points
 
 def qcsfTransform(points,drop_ratio=0.1,min_cube_drop=2,max_cube_drop=6,cube_size=4,sigma_cube_size=1,sigma_jittering=0.05,max_intensity=1025):
